@@ -1,53 +1,33 @@
 pipeline {
-    agent {
-        docker { 
-            image 'docker:20.10.24' // Use a specific Docker CLI image
-            args '--privileged' // Ensure Docker-in-Docker is allowed
-        }
-    }
+    agent any
     environment {
-        // Define environment variables
-        DOCKER_IMAGE = 'flask_image'
-        DOCKER_CONTAINER = 'flask_container'
+        DOCKER_IMAGE = 'flask-app3:latest'
+        DOCKER_CONTAINER = 'flask3-container'
     }
     stages {
-        stage('Checkout') {
-            steps {
-                // Check out code from your repository
-                checkout scm
-            }
-        }
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image from the Dockerfile in the workspace
-                    sh '''
-                    docker build -t $DOCKER_IMAGE .
-                    '''
+                    // Build the Docker image
+                    sh 'docker build -t $DOCKER_IMAGE .'
                 }
             }
         }
         stage('Run Docker Container') {
             steps {
                 script {
+                    // Stop any running container before starting a new one
+                    sh 'docker rm -f $DOCKER_CONTAINER || true'
                     // Run the Docker container
-                    sh '''
-                    docker run -d --name $DOCKER_CONTAINER -p 5005:5005 $DOCKER_IMAGE
-                    '''
+                    sh 'docker run -d -p 5005:5005 --name $DOCKER_CONTAINER $DOCKER_IMAGE'
                 }
             }
         }
     }
     post {
         always {
-            script {
-                // Clean up the Docker container and image
-                sh '''
-                docker stop $DOCKER_CONTAINER || true
-                docker rm $DOCKER_CONTAINER || true
-                docker rmi $DOCKER_IMAGE || true
-                '''
-            }
+            // Clean up any stopped containers
+            sh 'docker rm -f $DOCKER_CONTAINER || true'
         }
     }
 }
